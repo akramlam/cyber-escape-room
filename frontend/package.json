@@ -1,0 +1,63 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@mui/material": "^5.16.14",
+    "@react-three/drei": "^9.120.6",
+    "@react-three/fiber": "^8.17.12",
+    "@react-three/postprocessing": "^2.16.6",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/three": "^0.160.0",
+    "axios": "^1.6.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.1",
+    "react-scripts": "5.0.1",
+    "three": "^0.160.1",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "HTTPS=false react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "lint": "eslint src --ext .ts,.tsx",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,scss}\""
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.70",
+    "@types/react": "^18.2.47",
+    "@types/react-dom": "^18.2.18",
+    "@types/react-router-dom": "^5.3.3",
+    "eslint": "^8.51.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^14.0.1",
+    "prettier": "^3.0.3",
+    "typescript": "^4.9.5"
+  },
+  "proxy": "http://localhost:8000"
+}
