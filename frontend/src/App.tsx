@@ -1,6 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Dashboard from './components/Dashboard';
 import ScenarioView from './components/ScenarioView';
@@ -11,6 +11,7 @@ import Profile from './components/Profile';
 import PrivateRoute from './components/PrivateRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import TestScene from './components/scenarios/TestScene';
+import ScenarioList from './components/ScenarioList';
 
 const theme = createTheme({
   palette: {
@@ -67,19 +68,27 @@ function App() {
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route 
+              path="/scenarios" 
+              element={
+                <PrivateRoute>
+                  <ScenarioList />
+                </PrivateRoute>
+              } 
+            />
+            <Route 
+              path="/scenarios/:id" 
+              element={
+                <PrivateRoute>
+                  <ScenarioView />
+                </PrivateRoute>
+              } 
+            />
             <Route
               path="/"
               element={
                 <PrivateRoute>
                   <Dashboard />
-                </PrivateRoute>
-              }
-            />
-            <Route
-              path="/scenario/:id"
-              element={
-                <PrivateRoute>
-                  <ScenarioView />
                 </PrivateRoute>
               }
             />
@@ -92,6 +101,7 @@ function App() {
               }
             />
             <Route path="/test" element={<TestScene />} />
+            <Route path="/" element={<Navigate to="/scenarios" replace />} />
           </Routes>
         </Router>
       </AuthProvider>

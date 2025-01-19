@@ -1,6 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TextField, Button, Typography, Paper } from '@mui/material';
+import { 
+  TextField, 
+  Button, 
+  Typography, 
+  Paper, 
+  CircularProgress,
+  Alert,
+  Snackbar
+} from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 import {
   StyledContainer,
@@ -14,24 +22,50 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
+    if (!username || !password) {
+      setError('Please fill in all fields');
+      return;
+    }
+
     try {
-      // Pour le moment, on simule le login
-      if (username && password) {
-        await login(username, password);
-        navigate('/');
-      } else {
-        setError('Veuillez remplir tous les champs');
-      }
+      await login(username, password);
     } catch (err) {
-      setError('Erreur de connexion');
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Login failed. Please check your credentials and try again.');
+      }
     }
   };
+
+  if (loading) {
+    return (
+      <StyledContainer maxWidth="sm">
+        <StyledBox
+          sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh'
+          }}
+        >
+          <CircularProgress />
+        </StyledBox>
+      </StyledContainer>
+    );
+  }
 
   return (
     <StyledContainer maxWidth="sm">
@@ -45,86 +79,90 @@ const Login: React.FC = () => {
         }}
       >
         <StyledTypography variant="h4" gutterBottom>
-          Connexion
+          Login
         </StyledTypography>
 
         <form onSubmit={handleSubmit}>
-          <StyledBox sx={{ gap: 2 }}>
-            <TextField
-              fullWidth
-              label="Nom d'utilisateur"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#222',
-                  '& fieldset': {
-                    borderColor: '#333'
-                  },
-                  '&:hover fieldset': {
-                    borderColor: '#00ff00'
-                  }
+          <TextField
+            fullWidth
+            label="Username"
+            variant="outlined"
+            margin="normal"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            disabled={loading}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#333',
                 },
-                '& .MuiInputLabel-root': {
-                  color: '#00ff00'
-                }
-              }}
-            />
-
-            <TextField
-              fullWidth
-              type="password"
-              label="Mot de passe"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: '#222',
-                  '& fieldset': {
-                    borderColor: '#333'
-                  },
-                  '&:hover fieldset': {
-                    borderColor: '#00ff00'
-                  }
+                '&:hover fieldset': {
+                  borderColor: '#666',
                 },
-                '& .MuiInputLabel-root': {
-                  color: '#00ff00'
-                }
-              }}
-            />
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0af',
+                },
+              },
+              '& .MuiInputLabel-root': {
+                color: '#666',
+              },
+              '& .MuiOutlinedInput-input': {
+                color: '#fff',
+              },
+            }}
+          />
 
-            {error && (
-              <Typography color="error" variant="body2">
-                {error}
-              </Typography>
-            )}
+          <TextField
+            fullWidth
+            label="Password"
+            type="password"
+            variant="outlined"
+            margin="normal"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={loading}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#333',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#666',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#0af',
+                },
+              },
+              '& .MuiInputLabel-root': {
+                color: '#666',
+              },
+              '& .MuiOutlinedInput-input': {
+                color: '#fff',
+              },
+            }}
+          />
 
-            <StyledButton
-              type="submit"
-              variant="contained"
-              fullWidth
-              sx={{
-                marginTop: 2,
-                backgroundColor: '#00ff00',
-                color: '#000',
-                '&:hover': {
-                  backgroundColor: '#00cc00'
-                }
-              }}
-            >
-              Se connecter
-            </StyledButton>
-
-            <StyledButton
-              variant="text"
-              fullWidth
-              onClick={() => navigate('/register')}
-              sx={{ marginTop: 1 }}
-            >
-              Créer un compte
-            </StyledButton>
-          </StyledBox>
+          <StyledButton
+            type="submit"
+            fullWidth
+            variant="contained"
+            disabled={loading}
+            sx={{ mt: 3, mb: 2 }}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Login'}
+          </StyledButton>
         </form>
+
+        <Snackbar 
+          open={!!error} 
+          autoHideDuration={6000} 
+          onClose={() => setError('')}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert onClose={() => setError('')} severity="error" sx={{ width: '100%' }}>
+            {error}
+          </Alert>
+        </Snackbar>
       </StyledBox>
     </StyledContainer>
   );

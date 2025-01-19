@@ -1,28 +1,33 @@
 import { Suspense } from 'react'
 import Scene from '../components/3d/Scene'
 import { Box, CircularProgress } from '@mui/material'
+import { styled } from '@mui/material/styles'
+
+const StyledContainer = styled(Box)({
+  width: '100%',
+  height: '100vh',
+  position: 'relative',
+  overflow: 'hidden'
+})
+
+const LoaderContainer = styled(Box)({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  height: '100vh'
+})
 
 const GameView = () => {
   return (
-    <Box sx={{ 
-      width: '100%', 
-      height: '100vh',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
+    <StyledContainer>
       <Suspense fallback={
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          height: '100vh'
-        }}>
+        <LoaderContainer>
           <CircularProgress />
-        </Box>
+        </LoaderContainer>
       }>
         <Scene />
       </Suspense>
-    </Box>
+    </StyledContainer>
   )
 }
 

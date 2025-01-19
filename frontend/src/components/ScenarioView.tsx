@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
-import { Typography, TextField } from '@mui/material';
+import { Typography, TextField, Alert, Snackbar, CircularProgress } from '@mui/material';
 import axios from 'axios';
 import Scene3D from './Scene3D';
+import Room from './3d/Room';
+import { useAuth } from '../contexts/AuthContext';
 import {
   StyledContainer,
   StyledBox,
@@ -32,154 +34,276 @@ interface Scenario {
   time_limit: number;
 }
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 const ScenarioView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { token, isAuthenticated } = useAuth();
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
   const [answer, setAnswer] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [showHint, setShowHint] = useState(false);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [timeLeft, setTimeLeft] = useState(3600);
+  const [progressId, setProgressId] = useState<string | null>(null);
 
+  // Initialize scenario
   useEffect(() => {
-    const fetchScenario = async () => {
+    const initScenario = async () => {
+      if (!id || !token) {
+        console.log('Missing id or token:', { id, token });
+        return;
+      }
+
       try {
-        const response = await axios.get<Scenario>(`http://localhost:8000/api/scenarios/${id}/`);
-        setScenario(response.data);
-        if (response.data.challenges.length > 0) {
-          setCurrentChallenge(response.data.challenges[0]);
-          setTimeLeft(response.data.time_limit);
+        setLoading(true);
+        setError(null);
+        console.log('Fetching scenario data for id:', id);
+
+        const response = await axios.get(`${API_URL}/api/scenarios/${id}/`, {
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        console.log('Scenario data received:', response.data);
+        const scenarioData = response.data;
+        setScenario(scenarioData);
+
+        // Start scenario
+        console.log('Starting scenario...');
+        const startResponse = await axios.post(
+          `${API_URL}/api/scenarios/${id}/start/`,
+          {},
+          { 
+            headers: { 
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            } 
+          }
+        );
+
+        console.log('Start response:', startResponse.data);
+
+        if (startResponse.data.progress) {
+          setProgressId(startResponse.data.progress.id);
         }
+
+        if (!currentChallenge && scenarioData.challenges && scenarioData.challenges.length > 0) {
+          console.log('Setting initial challenge:', scenarioData.challenges[0]);
+          setCurrentChallenge(scenarioData.challenges[0]);
+        }
+
       } catch (error) {
-        console.error('Error fetching scenario:', error);
+        console.error('Error initializing scenario:', error);
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 401) {
+            navigate('/login');
+          } else {
+            setError(error.response?.data?.detail || 'Failed to load scenario');
+          }
+        }
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (id) {
-      fetchScenario();
+    if (isAuthenticated) {
+      console.log('Initializing scenario...');
+      initScenario();
+    } else {
+      console.log('Not authenticated, redirecting to login...');
+      navigate('/login');
     }
-  }, [id]);
+  }, [id, token, isAuthenticated]);
 
-  useEffect(() => {
-    if (timeLeft > 0) {
-      const timer = setInterval(() => {
-        setTimeLeft(time => time - 1);
-      }, 1000);
-      return () => clearInterval(timer);
+  // Handle answer submission
+  const handleSubmit = async () => {
+    if (!scenario || !currentChallenge || !progressId || submitLoading) {
+      console.log('Cannot submit:', { scenario, currentChallenge, progressId, submitLoading });
+      return;
     }
-  }, [timeLeft]);
-
-  const handleSubmitAnswer = async () => {
-    if (!scenario || !currentChallenge) return;
 
     try {
-      const response = await axios.post(`http://localhost:8000/api/progress/${scenario.id}/complete_challenge/`, {
-        challenge_id: currentChallenge.id,
-        answer: answer
+      setSubmitLoading(true);
+      setError(null);
+
+      console.log('Submitting answer:', { 
+        progressId, 
+        challengeId: currentChallenge.id, 
+        answer: answer.trim() 
       });
+
+      const response = await axios.post(
+        `${API_URL}/api/progress/${progressId}/complete_challenge/`,
+        {
+          challenge_id: currentChallenge.id,
+          answer: answer.trim().toLowerCase()
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.log('Submit response:', response.data);
 
       if (response.data.success) {
         const currentIndex = scenario.challenges.findIndex(c => c.id === currentChallenge.id);
         if (currentIndex < scenario.challenges.length - 1) {
-          setCurrentChallenge(scenario.challenges[currentIndex + 1]);
+          const nextChallenge = scenario.challenges[currentIndex + 1];
+          console.log('Moving to next challenge:', nextChallenge);
+          setCurrentChallenge(nextChallenge);
           setAnswer('');
           setShowHint(false);
         } else {
-          // Scenario completed
-          // TODO: Show completion screen
+          console.log('Scenario completed!');
+          setCompleted(true);
+          navigate('/completion', { state: { score: response.data.score } });
         }
       } else {
-        // Show error message
+        setError(response.data.message || 'Incorrect answer. Try again.');
       }
     } catch (error) {
       console.error('Error submitting answer:', error);
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 401) {
+          navigate('/login');
+        } else {
+          setError(error.response?.data?.error || 'Failed to submit answer');
+        }
+      }
+    } finally {
+      setSubmitLoading(false);
     }
   };
 
-  const formatTime = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  // Update time left
+  useEffect(() => {
+    if (!completed && timeLeft > 0) {
+      const timer = setInterval(() => {
+        setTimeLeft(prev => {
+          const newTime = prev - 1;
+          if (newTime <= 0) {
+            clearInterval(timer);
+            navigate('/timeout');
+            return 0;
+          }
+          // Update cached state
+          if (id && scenario && currentChallenge && progressId) {
+            const stateToCache = {
+              scenario,
+              currentChallenge,
+              timeLeft: newTime,
+              progressId
+            };
+            localStorage.setItem(`scenario_state_${id}`, JSON.stringify(stateToCache));
+          }
+          return newTime;
+        });
+      }, 1000);
+      return () => clearInterval(timer);
+    }
+  }, [timeLeft, completed, id, scenario, currentChallenge, progressId]);
+
+  if (loading) {
+    return (
+      <StyledContainer>
+        <CircularProgress />
+      </StyledContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <StyledContainer>
+        <Alert severity="error">{error}</Alert>
+      </StyledContainer>
+    );
+  }
+
+  if (!scenario || !currentChallenge) {
+    return (
+      <StyledContainer>
+        <Alert severity="warning">No scenario data available</Alert>
+      </StyledContainer>
+    );
+  }
 
   return (
-    <StyledContainer maxWidth="lg" sx={{ height: 'calc(100vh - 100px)' }}>
-      <StyledBox>
-        <StyledBox>
-          <StyledTypography variant="h4" gutterBottom>
-            {scenario?.title}
-          </StyledTypography>
-          <StyledTypography 
-            variant="body1" 
-            gutterBottom 
-            sx={{ color: timeLeft < 60 ? '#ff0000' : '#ffffff' }}
-          >
-            Temps restant: {formatTime(timeLeft)}
-          </StyledTypography>
-        </StyledBox>
-        
-        <StyledSceneContainer>
-          <Canvas
-            camera={{ position: [0, 2, 8], fov: 50 }}
-            style={{ background: '#000' }}
-          >
-            <Scene3D threatType={scenario?.threat_type || 'default'} />
-            <OrbitControls enablePan={false} />
-            <Environment preset="city" />
-          </Canvas>
-        </StyledSceneContainer>
+    <StyledContainer>
+      <StyledTypography variant="h3" color="primary">
+        {scenario.title}
+      </StyledTypography>
+      <StyledTypography>
+        Time remaining: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+      </StyledTypography>
 
-        <StyledChallengePanel>
-          {currentChallenge && (
-            <>
-              <StyledTypography variant="h6" gutterBottom>
-                Challenge: {currentChallenge.question}
-              </StyledTypography>
-              
-              {showHint && currentChallenge.hints.length > 0 && (
-                <StyledTypography variant="body2" sx={{ color: '#ff9800', mb: 2 }}>
-                  Hint: {currentChallenge.hints[0]}
-                </StyledTypography>
-              )}
+      <StyledSceneContainer>
+        <Canvas shadows camera={{ position: [0, 5, 10], fov: 75 }}>
+          <ambientLight intensity={0.5} />
+          <pointLight position={[10, 10, 10]} intensity={1} />
+          <Scene3D threatType={scenario.threat_type} />
+          <Room threatType={scenario.threat_type} difficulty="beginner" />
+          <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2} minPolarAngle={Math.PI / 4} />
+          <Environment preset="night" />
+        </Canvas>
+      </StyledSceneContainer>
 
-              <StyledAnswerContainer>
-                <TextField
-                  fullWidth
-                  variant="outlined"
-                  value={answer}
-                  onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Entrez votre réponse..."
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: '#222',
-                      borderRadius: '4px',
-                      '& fieldset': {
-                        borderColor: '#333'
-                      },
-                      '&:hover fieldset': {
-                        borderColor: '#00ff00'
-                      }
-                    }
-                  }}
-                />
-                <StyledSubmitButton
-                  variant="contained"
-                  onClick={handleSubmitAnswer}
-                >
-                  Valider
-                </StyledSubmitButton>
-                {!showHint && (
-                  <StyledHintButton
-                    variant="outlined"
-                    onClick={() => setShowHint(true)}
-                  >
-                    Indice
-                  </StyledHintButton>
-                )}
-              </StyledAnswerContainer>
-            </>
-          )}
-        </StyledChallengePanel>
-      </StyledBox>
+      <StyledChallengePanel>
+        <StyledTypography color="success" variant="h5">
+          Challenge: {currentChallenge.question}
+        </StyledTypography>
+
+        <StyledAnswerContainer>
+          <TextField
+            fullWidth
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            placeholder="Enter your answer..."
+            variant="outlined"
+            disabled={completed || submitLoading}
+            onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+          />
+          <StyledSubmitButton
+            onClick={handleSubmit}
+            disabled={submitLoading || completed}
+          >
+            {submitLoading ? <CircularProgress size={24} /> : 'Submit'}
+          </StyledSubmitButton>
+          <StyledHintButton
+            onClick={() => setShowHint(!showHint)}
+            disabled={completed}
+          >
+            Hint
+          </StyledHintButton>
+        </StyledAnswerContainer>
+
+        {showHint && currentChallenge.hints.length > 0 && (
+          <Alert severity="info">
+            Hint: {currentChallenge.hints[0]}
+          </Alert>
+        )}
+
+        {error && (
+          <Snackbar
+            open={!!error}
+            autoHideDuration={6000}
+            onClose={() => setError(null)}
+          >
+            <Alert severity="error" onClose={() => setError(null)}>
+              {error}
+            </Alert>
+          </Snackbar>
+        )}
+      </StyledChallengePanel>
     </StyledContainer>
   );
 };

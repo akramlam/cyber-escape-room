@@ -12,9 +12,10 @@ import { Suspense, useState } from 'react'
 import Room from './Room'
 import { EffectComposer, Bloom, ChromaticAberration, DepthOfField, Noise } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
+import { Vector2, Vector3 } from 'three'
 
 const Scene = () => {
-  const [cameraPosition] = useState([5, 3, 8])
+  const [cameraPosition] = useState(() => new Vector3(5, 3, 8))
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#000011' }}>
@@ -37,7 +38,7 @@ const Scene = () => {
           {/* Enhanced Lighting */}
           <ambientLight intensity={0.2} />
           <directionalLight
-            position={[5, 8, 5]}
+            position={new Vector3(5, 8, 5)}
             intensity={1.5}
             castShadow
             shadow-mapSize-width={2048}
@@ -51,8 +52,8 @@ const Scene = () => {
           />
           
           {/* Accent Lights */}
-          <pointLight position={[-5, 2, -5]} intensity={0.5} color="#00ff00" />
-          <pointLight position={[5, 2, 5]} intensity={0.5} color="#0000ff" />
+          <pointLight position={new Vector3(-5, 2, -5)} intensity={0.5} color="#00ff00" />
+          <pointLight position={new Vector3(5, 2, 5)} intensity={0.5} color="#0000ff" />
           
           {/* Environment and Atmosphere */}
           <Environment preset="night" />
@@ -84,8 +85,10 @@ const Scene = () => {
               blendFunction={BlendFunction.SCREEN}
             />
             <ChromaticAberration 
-              offset={[0.003, 0.003]} 
+              offset={new Vector2(0.003, 0.003)}
               blendFunction={BlendFunction.NORMAL}
+              radialModulation={false}
+              modulationOffset={0.5}
             />
             <DepthOfField 
               focusDistance={0}
@@ -101,7 +104,7 @@ const Scene = () => {
         </Suspense>
       </Canvas>
     </div>
-  )
-}
+  );
+};
 
-export default Scene
+export default Scene;
