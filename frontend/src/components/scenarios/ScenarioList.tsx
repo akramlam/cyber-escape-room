@@ -24,7 +24,7 @@ const ScenarioList: React.FC<ScenarioListProps> = ({ scenarios }) => {
                 {scenario.description}
               </Typography>
             </CardContent>
-            <StyledButton onClick={() => navigate(`/scenario/${scenario.id}`)}>
+            <StyledButton onClick={() => navigate(`/scenarios/${scenario.id}`)}>
               Start
             </StyledButton>
           </StyledCard>

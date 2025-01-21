@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   Card,
   CardContent,
@@ -37,29 +38,32 @@ const ScenarioList: React.FC = () => {
         setError(null);
         console.log('Fetching scenarios...');
 
-        const response = await fetch(`${API_URL}/api/scenarios/`, {
+        const response = await axios.get(`${API_URL}/api/scenarios/`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
 
-        if (!response.ok) {
-          throw new Error(`Failed to fetch scenarios: ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log('Scenarios received:', data);
-        setScenarios(data);
+        console.log('Scenarios received:', response.data);
+        setScenarios(response.data);
       } catch (error) {
         console.error('Error fetching scenarios:', error);
-        setError('Failed to load scenarios. Please try again later.');
+        if (axios.isAxiosError(error)) {
+          if (error.response?.status === 401) {
+            navigate('/login');
+          } else {
+            setError(error.response?.data?.error || 'Failed to load scenarios');
+          }
+        } else {
+          setError('Failed to load scenarios. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    if (isAuthenticated) {
+    if (isAuthenticated && token) {
       fetchScenarios();
     } else {
       navigate('/login');
@@ -78,6 +82,14 @@ const ScenarioList: React.FC = () => {
     return (
       <Container sx={{ mt: 4 }}>
         <Alert severity="error">{error}</Alert>
+      </Container>
+    );
+  }
+
+  if (!scenarios.length) {
+    return (
+      <Container sx={{ mt: 4 }}>
+        <Alert severity="info">No scenarios available at the moment.</Alert>
       </Container>
     );
   }
@@ -109,7 +121,10 @@ const ScenarioList: React.FC = () => {
                 <Button
                   size="small"
                   color="primary"
-                  onClick={() => navigate(`/scenarios/${scenario.id}`)}
+                  onClick={() => {
+                    console.log('Navigating to scenario:', scenario.id);
+                    navigate(`/scenarios/${scenario.id}`);
+                  }}
                 >
                   Start Challenge
                 </Button>
