@@ -1,14 +1,11 @@
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path
 from . import views
+from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
-router.register(r'scenarios', views.ScenarioViewSet)
-router.register(r'progress', views.UserProgressViewSet, basename='progress')
-router.register(r'achievements', views.AchievementViewSet)
+router.register(r'scenarios', views.ScenarioViewSet, basename='scenario')
 
 urlpatterns = [
     path('register/', views.register, name='register'),
-    path('test/', views.test_connection, name='test-connection'),
-    path('', include(router.urls)),
-]
+    path('user-info/', views.get_user_info, name='user-info'),
+] + router.urls

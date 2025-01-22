@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 
 # Create your models here.
 
@@ -22,8 +23,12 @@ class Scenario(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
     threat_type = models.CharField(max_length=50)  # e.g., 'phishing', 'ransomware', 'ddos'
-    difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='beginner')
-    time_limit = models.IntegerField(help_text='Time limit in seconds', default=3600)
+    difficulty = models.CharField(
+        max_length=20, 
+        choices=DIFFICULTY_CHOICES,
+        default='beginner'
+    )
+    time_limit = models.IntegerField(help_text='Time limit in seconds')
     created_at = models.DateTimeField(auto_now_add=True)
     scenario_type = models.CharField(max_length=50, choices=SCENARIO_TYPE_CHOICES, default='PASSWORD')
     environment_config = models.JSONField(default=dict)  # Store 3D environment settings
@@ -34,11 +39,11 @@ class Scenario(models.Model):
         return self.title
 
 class Challenge(models.Model):
-    scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE, related_name='challenges')
-    question = models.TextField()
-    correct_answer = models.TextField()
+    scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE)
+    question = models.CharField(max_length=500)
+    correct_answer = models.CharField(max_length=200)
     hints = models.JSONField(default=list)
-    points = models.IntegerField(default=100)
+    points = models.IntegerField(default=10)
     interaction_type = models.CharField(max_length=50, default='text')  # e.g., 'terminal', 'email', 'network'
     success_message = models.TextField(default='Correct! Well done.')
     failure_message = models.TextField(default='Incorrect. Try again.')
@@ -52,8 +57,9 @@ class UserProgress(models.Model):
     scenario = models.ForeignKey(Scenario, on_delete=models.CASCADE)
     completed = models.BooleanField(default=False)
     score = models.IntegerField(default=0)
-    time_taken = models.IntegerField(null=True)  # en secondes
-    completed_at = models.DateTimeField(null=True)
+    time_taken = models.IntegerField(default=0)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(default=timezone.now)
     
     class Meta:
         unique_together = ['user', 'scenario']

@@ -1,7 +1,54 @@
+version: '3.8'
+
 services:
-  elasticsearch:
-    image: elasticsearch:8.x
-  kibana:
-    image: kibana:8.x
-  prometheus:
-    image: prom/prometheus 
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DEBUG=1
+      - DJANGO_SECRET_KEY=dev-secret-key-123
+      - DATABASE_URL=postgresql://postgres:123@db:5432/cybergame
+    depends_on:
+      - db
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - REACT_APP_TERMINAL_URL=http://localhost:5000
+    depends_on:
+      - backend
+      - terminal
+
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=cybergame
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123
+    ports:
+      - "5432:5432"
+
+  terminal:
+    build: ./terminal
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./terminal:/app
+    cap_add:
+      - NET_ADMIN
+    security_opt:
+      - seccomp=unconfined
+
+volumes:
+  postgres_data: 

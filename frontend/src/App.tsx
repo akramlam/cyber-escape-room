@@ -12,6 +12,7 @@ import PrivateRoute from './components/PrivateRoute';
 import { AuthProvider } from './contexts/AuthContext';
 import TestScene from './components/scenarios/TestScene';
 import ScenarioList from './components/ScenarioList';
+import ScenarioTerminal from './components/ScenarioTerminal';
 
 const theme = createTheme({
   palette: {

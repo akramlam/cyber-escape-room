@@ -9,7 +9,7 @@ from django.contrib.auth.models import User
 from .models import Scenario, Challenge, UserProgress, Achievement, UserAchievement
 from .serializers import (
     ScenarioSerializer, ChallengeSerializer, UserProgressSerializer,
-    AchievementSerializer, UserAchievementSerializer
+    AchievementSerializer, UserAchievementSerializer, UserSerializer
 )
 
 logger = logging.getLogger(__name__)
@@ -17,14 +17,18 @@ logger = logging.getLogger(__name__)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_info(request):
-    """Get the current user's information."""
-    logger.info(f"Get user info - User: {request.user.username}")
-    user = request.user
-    return Response({
-        'id': user.id,
-        'username': user.username,
-        'email': user.email
-    })
+    """
+    Get authenticated user's information
+    """
+    try:
+        user = request.user
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -89,36 +93,47 @@ def api_root(request, format=None):
     })
 
 class ScenarioViewSet(viewsets.ModelViewSet):
-    queryset = Scenario.objects.all()
     serializer_class = ScenarioSerializer
-    permission_classes = [permissions.IsAuthenticated]  # Explicitly require authentication
+    permission_classes = [permissions.IsAuthenticated]
     
+    def get_queryset(self):
+        return Scenario.objects.all()
+
     def retrieve(self, request, *args, **kwargs):
         try:
-            instance = self.get_object()
-            logger.info(f"Found scenario - ID: {instance.id}")
-            
-            serializer = self.get_serializer(instance)
+            scenario_id = kwargs.get('pk')
+            scenario = Scenario.objects.get(id=scenario_id)
+            serializer = self.get_serializer(scenario)
             data = serializer.data
             
-            # Get user progress if exists
-            progress = UserProgress.objects.filter(user=request.user, scenario=instance).first()
+            # Get challenges for this scenario
+            challenges = Challenge.objects.filter(scenario=scenario)
+            data['challenges'] = ChallengeSerializer(challenges, many=True).data
+            
+            # Get current challenge (first incomplete one or last one)
+            current_challenge = challenges.first()  # Default to first challenge
+            
+            # Get user progress
+            progress = UserProgress.objects.filter(
+                user=request.user,
+                scenario=scenario
+            ).first()
+            
             if progress:
-                logger.info(f"Found user progress - ID: {progress.id}")
                 data['user_progress'] = UserProgressSerializer(progress).data
+            
+            data['current_challenge'] = ChallengeSerializer(current_challenge).data if current_challenge else None
             
             return Response(data)
             
         except Scenario.DoesNotExist:
-            logger.error(f"Scenario not found - ID: {kwargs.get('pk')}")
             return Response(
-                {'error': 'Scenario not found'},
+                {'error': f'Scenario with id {kwargs.get("pk")} not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
         except Exception as e:
-            logger.error(f"Error retrieving scenario: {str(e)}")
             return Response(
-                {'error': f'Error retrieving scenario: {str(e)}'},
+                {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

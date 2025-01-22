@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Environment } from '@react-three/drei';
-import { Typography, TextField, Alert, Snackbar, CircularProgress } from '@mui/material';
+import { Typography, TextField, Alert, Snackbar, CircularProgress, Box, Grid, Paper } from '@mui/material';
 import axios from 'axios';
 import Scene3D from './Scene3D';
 import Room from './3d/Room';
@@ -15,8 +15,10 @@ import {
   StyledChallengePanel,
   StyledAnswerContainer,
   StyledSubmitButton,
-  StyledHintButton
+  StyledHintButton,
+  StyledTerminalContainer
 } from './StyledComponents';
+import Terminal from './Terminal';
 
 interface Challenge {
   id: number;
@@ -30,6 +32,7 @@ interface Scenario {
   title: string;
   description: string;
   challenges: Challenge[];
+  current_challenge?: Challenge;
   threat_type: string;
   time_limit: number;
 }
@@ -239,71 +242,44 @@ const ScenarioView: React.FC = () => {
 
   return (
     <StyledContainer>
-      <StyledTypography variant="h3" color="primary">
-        {scenario.title}
-      </StyledTypography>
-      <StyledTypography>
-        Time remaining: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-      </StyledTypography>
+      <Grid container spacing={3}>
+        {/* Left panel: 3D Scene and Challenge Info */}
+        <Grid item xs={12} md={6}>
+          <StyledSceneContainer>
+            <Canvas shadows camera={{ position: [0, 5, 10], fov: 75 }}>
+              <ambientLight intensity={0.5} />
+              <pointLight position={[10, 10, 10]} intensity={1} />
+              <Scene3D threatType={scenario.threat_type} />
+              <Room threatType={scenario.threat_type} difficulty="beginner" />
+              <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2} minPolarAngle={Math.PI / 4} />
+              <Environment preset="night" />
+            </Canvas>
+          </StyledSceneContainer>
+          
+          <StyledChallengePanel>
+            <StyledTypography variant="h4" color="primary" gutterBottom>
+              {scenario.title}
+            </StyledTypography>
+            <StyledTypography gutterBottom>
+              Time remaining: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+            </StyledTypography>
+            <StyledTypography color="success" variant="h6" gutterBottom>
+              Challenge: {currentChallenge.question}
+            </StyledTypography>
+          </StyledChallengePanel>
+        </Grid>
 
-      <StyledSceneContainer>
-        <Canvas shadows camera={{ position: [0, 5, 10], fov: 75 }}>
-          <ambientLight intensity={0.5} />
-          <pointLight position={[10, 10, 10]} intensity={1} />
-          <Scene3D threatType={scenario.threat_type} />
-          <Room threatType={scenario.threat_type} difficulty="beginner" />
-          <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2} minPolarAngle={Math.PI / 4} />
-          <Environment preset="night" />
-        </Canvas>
-      </StyledSceneContainer>
-
-      <StyledChallengePanel>
-        <StyledTypography color="success" variant="h5">
-          Challenge: {currentChallenge.question}
-        </StyledTypography>
-
-        <StyledAnswerContainer>
-          <TextField
-            fullWidth
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Enter your answer..."
-            variant="outlined"
-            disabled={completed || submitLoading}
-            onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
-          />
-          <StyledSubmitButton
-            onClick={handleSubmit}
-            disabled={submitLoading || completed}
-          >
-            {submitLoading ? <CircularProgress size={24} /> : 'Submit'}
-          </StyledSubmitButton>
-          <StyledHintButton
-            onClick={() => setShowHint(!showHint)}
-            disabled={completed}
-          >
-            Hint
-          </StyledHintButton>
-        </StyledAnswerContainer>
-
-        {showHint && currentChallenge.hints.length > 0 && (
-          <Alert severity="info">
-            Hint: {currentChallenge.hints[0]}
-          </Alert>
-        )}
-
-        {error && (
-          <Snackbar
-            open={!!error}
-            autoHideDuration={6000}
-            onClose={() => setError(null)}
-          >
-            <Alert severity="error" onClose={() => setError(null)}>
-              {error}
-            </Alert>
-          </Snackbar>
-        )}
-      </StyledChallengePanel>
+        {/* Right panel: Terminal */}
+        <Grid item xs={12} md={6}>
+          <StyledTerminalContainer>
+            <Terminal 
+              scenarioId={id} 
+              challenge={currentChallenge}
+              onSuccess={handleSubmit}
+            />
+          </StyledTerminalContainer>
+        </Grid>
+      </Grid>
     </StyledContainer>
   );
 };

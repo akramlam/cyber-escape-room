@@ -22,6 +22,11 @@ interface Scenario {
   time_limit: number;
 }
 
+interface ApiError {
+  message: string;
+  code: number;
+}
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 const ScenarioList: React.FC = () => {

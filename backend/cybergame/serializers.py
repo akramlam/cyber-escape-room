@@ -10,23 +10,20 @@ class UserSerializer(serializers.ModelSerializer):
 class ChallengeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Challenge
-        fields = ('id', 'question', 'hints', 'points')
+        fields = ['id', 'question', 'hints', 'points']
 
 class ScenarioSerializer(serializers.ModelSerializer):
-    challenges = ChallengeSerializer(many=True, read_only=True)
-    
     class Meta:
         model = Scenario
-        fields = ('id', 'title', 'description', 'threat_type', 'difficulty', 
-                 'time_limit', 'created_at', 'challenges')
+        fields = [
+            'id', 'title', 'description', 'threat_type', 
+            'difficulty', 'time_limit', 'created_at'
+        ]
 
 class UserProgressSerializer(serializers.ModelSerializer):
-    scenario = ScenarioSerializer(read_only=True)
-    
     class Meta:
         model = UserProgress
-        fields = ('id', 'user', 'scenario', 'completed', 'score', 
-                 'time_taken', 'completed_at')
+        fields = ['id', 'completed', 'score', 'time_taken', 'completed_at']
 
 class AchievementSerializer(serializers.ModelSerializer):
     class Meta:
