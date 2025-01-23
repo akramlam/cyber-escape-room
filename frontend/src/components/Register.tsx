@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TextField, Typography } from '@mui/material';
+import { TextField, Typography, Button, RadioGroup, FormControlLabel, Radio } from '@mui/material';
 import axios from 'axios';
 import {
   StyledContainer,
@@ -15,6 +15,7 @@ const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [role, setRole] = useState('NON_IT');
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,7 +26,8 @@ const Register: React.FC = () => {
       await axios.post('http://localhost:8000/api/register/', {
         username,
         email,
-        password
+        password,
+        role
       });
       
       // Redirection vers la page de connexion après l'inscription réussie
@@ -74,6 +76,36 @@ const Register: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+
+              <RadioGroup value={role} onChange={(e) => setRole(e.target.value)}>
+                <FormControlLabel 
+                  value="IT" 
+                  control={<Radio />} 
+                  label="IT Professional (Server Security & Incident Response)" 
+                />
+                <FormControlLabel 
+                  value="NON_IT" 
+                  control={<Radio />} 
+                  label="Non-IT User (Security Awareness Training)" 
+                />
+              </RadioGroup>
+
+              {role === 'IT' && (
+                <>
+                  <TextField
+                    label="Years of IT Experience"
+                    type="number"
+                    fullWidth
+                    margin="normal"
+                  />
+                  <TextField
+                    label="Areas of Expertise"
+                    multiline
+                    fullWidth
+                    margin="normal"
+                  />
+                </>
+              )}
 
               {error && (
                 <Typography color="error" variant="body2">

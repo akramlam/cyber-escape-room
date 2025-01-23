@@ -42,7 +42,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 const ScenarioView: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { token, isAuthenticated } = useAuth();
+  const { token, isAuthenticated, user } = useAuth();
   const [scenario, setScenario] = useState<Scenario | null>(null);
   const [currentChallenge, setCurrentChallenge] = useState<Challenge | null>(null);
   const [answer, setAnswer] = useState('');
@@ -242,44 +242,13 @@ const ScenarioView: React.FC = () => {
 
   return (
     <StyledContainer>
-      <Grid container spacing={3}>
-        {/* Left panel: 3D Scene and Challenge Info */}
-        <Grid item xs={12} md={6}>
-          <StyledSceneContainer>
-            <Canvas shadows camera={{ position: [0, 5, 10], fov: 75 }}>
-              <ambientLight intensity={0.5} />
-              <pointLight position={[10, 10, 10]} intensity={1} />
-              <Scene3D threatType={scenario.threat_type} />
-              <Room threatType={scenario.threat_type} difficulty="beginner" />
-              <OrbitControls enableZoom={false} maxPolarAngle={Math.PI / 2} minPolarAngle={Math.PI / 4} />
-              <Environment preset="night" />
-            </Canvas>
-          </StyledSceneContainer>
-          
-          <StyledChallengePanel>
-            <StyledTypography variant="h4" color="primary" gutterBottom>
-              {scenario.title}
-            </StyledTypography>
-            <StyledTypography gutterBottom>
-              Time remaining: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
-            </StyledTypography>
-            <StyledTypography color="success" variant="h6" gutterBottom>
-              Challenge: {currentChallenge.question}
-            </StyledTypography>
-          </StyledChallengePanel>
-        </Grid>
-
-        {/* Right panel: Terminal */}
-        <Grid item xs={12} md={6}>
-          <StyledTerminalContainer>
-            <Terminal 
-              scenarioId={id} 
-              challenge={currentChallenge}
-              onSuccess={handleSubmit}
-            />
-          </StyledTerminalContainer>
-        </Grid>
-      </Grid>
+      {user?.role === 'IT' ? (
+        // Terminal-based interface for IT professionals
+        <ITScenarioView />
+      ) : (
+        // Quiz-based interface for non-IT users
+        <NonITScenarioView />
+      )}
     </StyledContainer>
   );
 };

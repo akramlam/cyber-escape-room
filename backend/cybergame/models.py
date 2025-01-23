@@ -4,6 +4,19 @@ from django.utils import timezone
 
 # Create your models here.
 
+class UserProfile(models.Model):
+    ROLE_CHOICES = [
+        ('IT', 'IT Professional'),
+        ('NON_IT', 'Non-IT User')
+    ]
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    experience_level = models.IntegerField(default=1)
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.role}"
+
 class Scenario(models.Model):
     DIFFICULTY_CHOICES = [
         ('beginner', 'Beginner'),
@@ -20,6 +33,13 @@ class Scenario(models.Model):
         ('XSS', 'Cross-Site Scripting')
     ]
     
+    # Add role requirement to scenarios
+    ROLE_REQUIREMENT = [
+        ('IT', 'IT Only'),
+        ('NON_IT', 'Non-IT Only'),
+        ('ALL', 'All Users')
+    ]
+    
     title = models.CharField(max_length=200)
     description = models.TextField()
     threat_type = models.CharField(max_length=50)  # e.g., 'phishing', 'ransomware', 'ddos'
@@ -34,6 +54,7 @@ class Scenario(models.Model):
     environment_config = models.JSONField(default=dict)  # Store 3D environment settings
     learning_objectives = models.JSONField(default=list)
     recommended_time = models.IntegerField(help_text='Recommended time in minutes', default=60)
+    required_role = models.CharField(max_length=10, choices=ROLE_REQUIREMENT, default='ALL')
     
     def __str__(self):
         return self.title
@@ -50,6 +71,10 @@ class Challenge(models.Model):
     learning_points = models.JSONField(default=list)
     
     def __str__(self):
+        # This method defines the string representation of a Challenge object
+        # It returns a formatted string that includes the title of the associated scenario
+        # Used when printing or displaying the Challenge object
+        # For example: "Challenge for Password Security Basics"
         return f"Challenge for {self.scenario.title}"
 
 class UserProgress(models.Model):
@@ -93,3 +118,32 @@ class Leaderboard(models.Model):
     score = models.IntegerField()
     completion_time = models.IntegerField()
     completed_at = models.DateTimeField(auto_now_add=True)
+
+class PhishingScenario(models.Model):
+    SCENARIO_TYPES = [
+        ('EMAIL', 'Email Phishing'),
+        ('SOCIAL', 'Social Engineering'),
+        ('SPEAR', 'Spear Phishing'),
+        ('QUIZ', 'Security Quiz')
+    ]
+    
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    scenario_type = models.CharField(max_length=10, choices=SCENARIO_TYPES)
+    difficulty = models.CharField(max_length=20, choices=Scenario.DIFFICULTY_CHOICES)
+    content = models.JSONField(help_text='Scenario content (email template, quiz questions, etc)')
+    correct_identifiers = models.JSONField(help_text='List of phishing indicators to identify')
+    learning_points = models.JSONField(default=list)
+    
+    def __str__(self):
+        return f"{self.get_scenario_type_display()}: {self.title}"
+
+class PhishingAttempt(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    scenario = models.ForeignKey(PhishingScenario, on_delete=models.CASCADE)
+    identified_correctly = models.BooleanField(default=False)
+    user_selections = models.JSONField(default=list)
+    completed_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['user', 'scenario']
